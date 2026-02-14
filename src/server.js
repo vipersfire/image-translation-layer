@@ -1,10 +1,13 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const { proxyAndTranslate } = require('./proxy');
 const { translateImage } = require('./image-translator');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const SSL_KEY = process.env.SSL_KEY;   // path to key.pem
+const SSL_CERT = process.env.SSL_CERT; // path to cert.pem
 
 // Serve static frontend assets
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
@@ -44,6 +47,19 @@ app.get('/proxy', proxyAndTranslate);
 // Proxy sub-resources (css, js, images referenced by the page)
 app.get('/proxy/*', proxyAndTranslate);
 
-app.listen(PORT, () => {
-  console.log(`Image Translation Layer running → http://localhost:${PORT}`);
-});
+// Start with HTTPS if certs are provided, otherwise plain HTTP
+if (SSL_KEY && SSL_CERT) {
+  const https = require('https');
+  const opts = {
+    key: fs.readFileSync(SSL_KEY),
+    cert: fs.readFileSync(SSL_CERT),
+  };
+  https.createServer(opts, app).listen(PORT, () => {
+    console.log(`Image Translation Layer running → https://localhost:${PORT}`);
+  });
+} else {
+  app.listen(PORT, () => {
+    console.log(`Image Translation Layer running → http://localhost:${PORT}`);
+    console.log('  Tip: set SSL_KEY and SSL_CERT env vars to enable HTTPS');
+  });
+}

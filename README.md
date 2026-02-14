@@ -74,3 +74,19 @@ Auto-detect, Japanese, Korean, Chinese (Simplified/Traditional), English, Spanis
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | Server port |
+| `SSL_KEY` | — | Path to SSL private key (enables HTTPS) |
+| `SSL_CERT` | — | Path to SSL certificate (enables HTTPS) |
+
+## Running over HTTPS
+
+The app runs on plain HTTP by default, which is fine for local use since all upstream fetches to comic sites use HTTPS server-side (the browser never contacts the comic site directly).
+
+To enable HTTPS on the proxy itself (useful for LAN access or deployment):
+
+```bash
+# Generate a self-signed cert for local dev
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN=localhost'
+
+# Start with HTTPS
+SSL_KEY=key.pem SSL_CERT=cert.pem npm start
+```

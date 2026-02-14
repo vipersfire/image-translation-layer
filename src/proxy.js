@@ -31,6 +31,7 @@ async function proxyAndTranslate(req, res) {
         Accept: 'text/html,application/xhtml+xml,*/*',
         Referer: parsed.origin,
       },
+      redirect: 'follow', // follow HTTP → HTTPS redirects automatically
     });
 
     const contentType = upstream.headers.get('content-type') || '';
