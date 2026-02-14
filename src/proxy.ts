@@ -3,6 +3,8 @@ import * as cheerio from 'cheerio';
 import { Request, Response } from 'express';
 import { translateBatch } from './translator';
 
+type CheerioElement = cheerio.Element;
+
 /**
  * Fetch a remote page, translate visible text nodes, rewrite asset URLs so
  * they route back through this proxy, and inject the client-side overlay
@@ -50,11 +52,11 @@ export async function proxyAndTranslate(req: Request, res: Response): Promise<Re
 
     // Collect visible text nodes
     const textNodes: string[] = [];
-    const textElements: any[] = [];
+    const textElements: CheerioElement[] = [];
     $('body *')
       .not('script, style, noscript, svg, code, pre')
       .contents()
-      .each(function (this: any) {
+      .each(function (this: CheerioElement) {
         if (this.type === 'text') {
           const text = $(this).text().trim();
           if (text.length > 0) {
@@ -91,12 +93,12 @@ export async function proxyAndTranslate(req: Request, res: Response): Promise<Re
       }
     };
 
-    $('a[href]').each(function (this: any) {
+    $('a[href]').each(function (this: CheerioElement) {
       const href = $(this).attr('href');
       const resolved = resolveUrl(href);
       if (resolved) $(this).attr('href', resolved);
     });
-    $('img[src]').each(function (this: any) {
+    $('img[src]').each(function (this: CheerioElement) {
       const src = $(this).attr('src');
       // Keep original src as data attribute for the overlay script
       if (src) {
@@ -106,12 +108,12 @@ export async function proxyAndTranslate(req: Request, res: Response): Promise<Re
         if (resolved) $(this).attr('src', resolved);
       }
     });
-    $('link[href]').each(function (this: any) {
+    $('link[href]').each(function (this: CheerioElement) {
       const href = $(this).attr('href');
       const resolved = resolveUrl(href);
       if (resolved) $(this).attr('href', resolved);
     });
-    $('script[src]').each(function (this: any) {
+    $('script[src]').each(function (this: CheerioElement) {
       const src = $(this).attr('src');
       const resolved = resolveUrl(src);
       if (resolved) $(this).attr('src', resolved);
