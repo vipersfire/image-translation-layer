@@ -2,10 +2,12 @@
   "name": "image-translation-layer",
   "version": "1.0.0",
   "description": "Comic translation proxy — translates HTML text and image text overlays on-the-fly",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "build": "tsc",
+    "start": "npm run build && node dist/server.js",
+    "dev": "npm run build && node --watch dist/server.js",
+    "dev:ts": "tsc --watch"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.62",
@@ -18,5 +20,11 @@
   "engines": {
     "node": ">=18"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@types/cheerio": "^0.22.35",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.2.3",
+    "typescript": "^5.9.3"
+  }
 }

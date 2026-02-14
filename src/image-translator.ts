@@ -1,12 +1,12 @@
-const Tesseract = require('tesseract.js');
-const sharp = require('sharp');
-const { createCanvas } = require('@napi-rs/canvas');
-const { translateBatch } = require('./translator');
+import Tesseract from 'tesseract.js';
+import sharp from 'sharp';
+import { createCanvas, Image, SKRSContext2D } from '@napi-rs/canvas';
+import { translateBatch } from './translator';
 
 // Reuse a single Tesseract scheduler across requests
-let scheduler = null;
+let scheduler: Tesseract.Scheduler | null = null;
 
-async function getScheduler() {
+async function getScheduler(): Promise<Tesseract.Scheduler> {
   if (scheduler) return scheduler;
   scheduler = Tesseract.createScheduler();
   // Spin up 2 workers for concurrency
@@ -17,6 +17,21 @@ async function getScheduler() {
   return scheduler;
 }
 
+interface TranslatedRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  original: string;
+  translated: string;
+}
+
+interface TranslateImageResult {
+  buffer: Buffer;
+  contentType: string;
+  regions: TranslatedRegion[];
+}
+
 /**
  * Fetch a remote image, run OCR to find text regions, translate them,
  * and return a new image with translated text overlaid (original text
@@ -24,7 +39,7 @@ async function getScheduler() {
  *
  * Returns { buffer, contentType, regions }
  */
-async function translateImage(imageUrl, fromLang = 'auto', toLang = 'en') {
+export async function translateImage(imageUrl: string, fromLang: string = 'auto', toLang: string = 'en'): Promise<TranslateImageResult> {
   // 1. Fetch the image
   const resp = await fetch(imageUrl, {
     headers: {
@@ -41,6 +56,9 @@ async function translateImage(imageUrl, fromLang = 'auto', toLang = 'en') {
   // 2. Decode image metadata
   const metadata = await sharp(imgBuffer).metadata();
   const { width, height } = metadata;
+  if (!width || !height) {
+    throw new Error('Could not determine image dimensions');
+  }
 
   // 3. Run OCR
   const sched = await getScheduler();
@@ -75,7 +93,6 @@ async function translateImage(imageUrl, fromLang = 'auto', toLang = 'en') {
   const ctx = canvas.getContext('2d');
 
   // Draw original image onto canvas
-  const { Image } = require('@napi-rs/canvas');
   const img = new Image();
   img.src = pngBuffer;
   ctx.drawImage(img, 0, 0, width, height);
@@ -105,11 +122,31 @@ async function translateImage(imageUrl, fromLang = 'auto', toLang = 'en') {
   return { buffer: outputBuffer, contentType: 'image/png', regions };
 }
 
+interface TextBlock {
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface WorkInProgress {
+  words: string[];
+  x: number;
+  y: number;
+  x2: number;
+  y2: number;
+  lastX: number;
+  lastY: number;
+  avgHeight: number;
+  lines: number;
+}
+
 /**
  * Group OCR words that are spatially close into blocks so we can translate
  * coherent phrases rather than individual words.
  */
-function groupWordsIntoBlocks(words) {
+function groupWordsIntoBlocks(words: Tesseract.Word[]): TextBlock[] {
   if (!words || words.length === 0) return [];
 
   // Filter low-confidence noise
@@ -124,8 +161,8 @@ function groupWordsIntoBlocks(words) {
     return ay - by;
   });
 
-  const blocks = [];
-  let current = null;
+  const blocks: TextBlock[] = [];
+  let current: WorkInProgress | null = null;
 
   for (const word of sorted) {
     const wb = word.bbox;
@@ -165,7 +202,7 @@ function groupWordsIntoBlocks(words) {
   return blocks;
 }
 
-function finalizeBlock(b) {
+function finalizeBlock(b: WorkInProgress): TextBlock {
   return {
     text: b.words.join(' '),
     x: b.x,
@@ -178,7 +215,7 @@ function finalizeBlock(b) {
 /**
  * Sample a few pixels around a region to estimate the background colour.
  */
-async function sampleBackgroundColor(imgBuffer, region, imgW, imgH) {
+async function sampleBackgroundColor(imgBuffer: Buffer, region: TranslatedRegion, imgW: number, imgH: number): Promise<string> {
   try {
     // Sample a small strip above the region
     const sampleY = Math.max(0, region.y - 3);
@@ -217,7 +254,7 @@ async function sampleBackgroundColor(imgBuffer, region, imgW, imgH) {
 /**
  * Pick black or white text depending on background luminance.
  */
-function getContrastColor(bgColor) {
+function getContrastColor(bgColor: string): string {
   const match = bgColor.match(/\d+/g);
   if (!match || match.length < 3) return '#000000';
   const [r, g, b] = match.map(Number);
@@ -228,7 +265,7 @@ function getContrastColor(bgColor) {
 /**
  * Draw text that wraps within a given width.
  */
-function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
+function drawWrappedText(ctx: SKRSContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number): void {
   const words = text.split(' ');
   let line = '';
   let currentY = y;
@@ -248,5 +285,3 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
     ctx.fillText(line, x, currentY);
   }
 }
-
-module.exports = { translateImage };
