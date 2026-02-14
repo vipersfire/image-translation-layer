@@ -82,7 +82,10 @@ export async function proxyAndTranslate(req: Request, res: Response): Promise<Re
 
     const resolveUrl = (href: string | undefined): string | undefined => {
       if (!href) return href;
-      if (href.startsWith('data:') || href.startsWith('javascript:') || href.startsWith('#')) {
+      if (href.startsWith('data:') || 
+          href.startsWith('javascript:') || 
+          href.startsWith('vbscript:') ||
+          href.startsWith('#')) {
         return href;
       }
       try {
