@@ -1,15 +1,15 @@
-const translate = require('google-translate-api-x');
+import translate from 'google-translate-api-x';
 
 /**
  * Translate a single string.
  */
-async function translateText(text, from = 'auto', to = 'en') {
+export async function translateText(text: string, from: string = 'auto', to: string = 'en'): Promise<string> {
   if (!text || !text.trim()) return text;
   try {
     const result = await translate(text, { from, to });
     return result.text;
   } catch (err) {
-    console.error('[translate]', err.message);
+    console.error('[translate]', (err as Error).message);
     return text; // fallback to original
   }
 }
@@ -18,7 +18,7 @@ async function translateText(text, from = 'auto', to = 'en') {
  * Translate an array of strings in one shot (batched).
  * google-translate-api-x supports array input natively.
  */
-async function translateBatch(texts, from = 'auto', to = 'en') {
+export async function translateBatch(texts: string[], from: string = 'auto', to: string = 'en'): Promise<string[]> {
   if (!texts || texts.length === 0) return [];
 
   // Filter out empty strings, keep index mapping
@@ -39,9 +39,7 @@ async function translateBatch(texts, from = 'auto', to = 'en') {
     }
     return output;
   } catch (err) {
-    console.error('[translateBatch]', err.message);
+    console.error('[translateBatch]', (err as Error).message);
     return texts; // fallback to originals
   }
 }
-
-module.exports = { translateText, translateBatch };

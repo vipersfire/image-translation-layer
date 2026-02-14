@@ -1,16 +1,17 @@
-const { URL } = require('url');
-const cheerio = require('cheerio');
-const { translateBatch } = require('./translator');
+import { URL } from 'url';
+import * as cheerio from 'cheerio';
+import { Request, Response } from 'express';
+import { translateBatch } from './translator';
 
 /**
  * Fetch a remote page, translate visible text nodes, rewrite asset URLs so
  * they route back through this proxy, and inject the client-side overlay
  * script that handles image translation in the browser.
  */
-async function proxyAndTranslate(req, res) {
-  const targetUrl = req.query.url;
-  const toLang = req.query.to || 'en';
-  const fromLang = req.query.from || 'auto';
+export async function proxyAndTranslate(req: Request, res: Response): Promise<Response | void> {
+  const targetUrl = req.query.url as string;
+  const toLang = (req.query.to as string) || 'en';
+  const fromLang = (req.query.from as string) || 'auto';
 
   if (!targetUrl) {
     return res.status(400).send('Missing ?url= parameter');
@@ -48,12 +49,12 @@ async function proxyAndTranslate(req, res) {
     const $ = cheerio.load(html);
 
     // Collect visible text nodes
-    const textNodes = [];
-    const textElements = [];
+    const textNodes: string[] = [];
+    const textElements: any[] = [];
     $('body *')
       .not('script, style, noscript, svg, code, pre')
       .contents()
-      .each(function () {
+      .each(function (this: any) {
         if (this.type === 'text') {
           const text = $(this).text().trim();
           if (text.length > 0) {
@@ -77,7 +78,7 @@ async function proxyAndTranslate(req, res) {
     const baseOrigin = parsed.origin;
     const basePath = parsed.pathname.replace(/\/[^/]*$/, '/');
 
-    const resolveUrl = (href) => {
+    const resolveUrl = (href: string | undefined): string | undefined => {
       if (!href) return href;
       if (href.startsWith('data:') || href.startsWith('javascript:') || href.startsWith('#')) {
         return href;
@@ -90,22 +91,30 @@ async function proxyAndTranslate(req, res) {
       }
     };
 
-    $('a[href]').each(function () {
+    $('a[href]').each(function (this: any) {
       const href = $(this).attr('href');
-      $(this).attr('href', resolveUrl(href));
+      const resolved = resolveUrl(href);
+      if (resolved) $(this).attr('href', resolved);
     });
-    $('img[src]').each(function () {
+    $('img[src]').each(function (this: any) {
       const src = $(this).attr('src');
       // Keep original src as data attribute for the overlay script
-      const absSrc = new URL(src, targetUrl).href;
-      $(this).attr('data-original-src', absSrc);
-      $(this).attr('src', resolveUrl(src));
+      if (src) {
+        const absSrc = new URL(src, targetUrl).href;
+        $(this).attr('data-original-src', absSrc);
+        const resolved = resolveUrl(src);
+        if (resolved) $(this).attr('src', resolved);
+      }
     });
-    $('link[href]').each(function () {
-      $(this).attr('href', resolveUrl($(this).attr('href')));
+    $('link[href]').each(function (this: any) {
+      const href = $(this).attr('href');
+      const resolved = resolveUrl(href);
+      if (resolved) $(this).attr('href', resolved);
     });
-    $('script[src]').each(function () {
-      $(this).attr('src', resolveUrl($(this).attr('src')));
+    $('script[src]').each(function (this: any) {
+      const src = $(this).attr('src');
+      const resolved = resolveUrl(src);
+      if (resolved) $(this).attr('src', resolved);
     });
 
     // Inject <base> so any URLs we missed still resolve
@@ -134,8 +143,6 @@ async function proxyAndTranslate(req, res) {
     res.send($.html());
   } catch (err) {
     console.error('[proxy]', err);
-    res.status(502).send(`Failed to fetch upstream: ${err.message}`);
+    res.status(502).send(`Failed to fetch upstream: ${(err as Error).message}`);
   }
 }
-
-module.exports = { proxyAndTranslate };

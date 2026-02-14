@@ -1,8 +1,9 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const { proxyAndTranslate } = require('./proxy');
-const { translateImage } = require('./image-translator');
+import express, { Request, Response } from 'express';
+import path from 'path';
+import fs from 'fs';
+import https from 'https';
+import { proxyAndTranslate } from './proxy';
+import { translateImage } from './image-translator';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,20 +14,25 @@ const SSL_CERT = process.env.SSL_CERT; // path to cert.pem
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
 
 // Serve the landing / control UI
-app.get('/', (_req, res) => {
+app.get('/', (_req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
 // ---- Image translation endpoint ----
 // Fetches a remote image, runs OCR, and returns a translated overlay version
-app.get('/api/translate-image', async (req, res) => {
+app.get('/api/translate-image', async (req: Request, res: Response): Promise<void> => {
   const { url, from, to } = req.query;
   if (!url || !to) {
-    return res.status(400).json({ error: 'url and to query params required' });
+    res.status(400).json({ error: 'url and to query params required' });
+    return;
   }
 
   try {
-    const { buffer, contentType, regions } = await translateImage(url, from || 'auto', to);
+    const { buffer, contentType, regions } = await translateImage(
+      url as string, 
+      (from as string) || 'auto', 
+      to as string
+    );
     // Return JSON with base64 image + region metadata so the frontend can
     // choose between the pre-rendered image or its own overlay strategy.
     res.json({
@@ -35,7 +41,7 @@ app.get('/api/translate-image', async (req, res) => {
     });
   } catch (err) {
     console.error('[image-translate]', err);
-    res.status(502).json({ error: 'Image translation failed', detail: err.message });
+    res.status(502).json({ error: 'Image translation failed', detail: (err as Error).message });
   }
 });
 
@@ -49,7 +55,6 @@ app.get('/proxy/*', proxyAndTranslate);
 
 // Start with HTTPS if certs are provided, otherwise plain HTTP
 if (SSL_KEY && SSL_CERT) {
-  const https = require('https');
   const opts = {
     key: fs.readFileSync(SSL_KEY),
     cert: fs.readFileSync(SSL_CERT),
