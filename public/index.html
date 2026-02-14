@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Translation Layer — Comic Reader</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-bottom: 1px solid #2a2a4a;
+      padding: 1.5rem 2rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00d2ff, #7b2ff7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.3rem;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .control-panel {
+      width: 100%;
+      max-width: 720px;
+      padding: 2rem 1.5rem;
+    }
+
+    .input-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #aaa;
+      margin-bottom: 0.4rem;
+    }
+
+    .input-group input,
+    .input-group select {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-group input:focus,
+    .input-group select:focus {
+      border-color: #7b2ff7;
+    }
+
+    .lang-row {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .lang-row .input-group {
+      flex: 1;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      padding: 0.8rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #7b2ff7, #00d2ff);
+      color: #fff;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 1rem;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .status.info { display: block; background: #16213e; border: 1px solid #2a2a4a; }
+    .status.error { display: block; background: #2e1a1a; border: 1px solid #4a2a2a; color: #ff6b6b; }
+
+    .instructions {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: #1a1a2e;
+      border-radius: 12px;
+      border: 1px solid #2a2a4a;
+    }
+
+    .instructions h3 {
+      font-size: 0.95rem;
+      margin-bottom: 0.8rem;
+      color: #00d2ff;
+    }
+
+    .instructions ol {
+      padding-left: 1.3rem;
+      font-size: 0.85rem;
+      line-height: 1.8;
+      color: #bbb;
+    }
+
+    .instructions code {
+      background: #0f0f1a;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: #7b2ff7;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Image Translation Layer</h1>
+    <p>Proxy any comic site — translate text &amp; images on the fly</p>
+  </header>
+
+  <div class="control-panel">
+    <form id="proxyForm">
+      <div class="input-group">
+        <label for="targetUrl">Comic Website URL</label>
+        <input
+          type="url"
+          id="targetUrl"
+          placeholder="https://example-comic-site.com/chapter/1"
+          required
+        >
+      </div>
+
+      <div class="lang-row">
+        <div class="input-group">
+          <label for="fromLang">Source Language</label>
+          <select id="fromLang">
+            <option value="auto">Auto-detect</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="zh-CN">Chinese (Simplified)</option>
+            <option value="zh-TW">Chinese (Traditional)</option>
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="th">Thai</option>
+            <option value="id">Indonesian</option>
+            <option value="vi">Vietnamese</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="toLang">Translate To</label>
+          <select id="toLang">
+            <option value="en">English</option>
+            <option value="id">Indonesian</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="zh-CN">Chinese (Simplified)</option>
+            <option value="zh-TW">Chinese (Traditional)</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="th">Thai</option>
+            <option value="vi">Vietnamese</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="goBtn">
+        Open Translated Page
+      </button>
+    </form>
+
+    <div id="status" class="status"></div>
+
+    <div class="instructions">
+      <h3>How it works</h3>
+      <ol>
+        <li>Paste any comic website URL above</li>
+        <li>Pick the source &amp; target language</li>
+        <li>The proxy fetches the page, translates HTML text, and rewrites links</li>
+        <li>Images with text (speech bubbles, SFX) are detected via OCR and overlaid with translations</li>
+        <li>Click any image on the proxied page to trigger image translation</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('proxyForm');
+    const status = document.getElementById('status');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const url = document.getElementById('targetUrl').value.trim();
+      const from = document.getElementById('fromLang').value;
+      const to = document.getElementById('toLang').value;
+
+      if (!url) return;
+
+      status.className = 'status info';
+      status.textContent = 'Loading translated page…';
+
+      const proxyUrl = `/proxy?url=${encodeURIComponent(url)}&to=${to}&from=${from}`;
+      window.location.href = proxyUrl;
+    });
+  </script>
+</body>
+</html>
